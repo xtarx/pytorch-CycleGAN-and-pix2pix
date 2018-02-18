@@ -115,47 +115,15 @@ def find_patches_from_slide(slide_path, base_truth_dir=BASE_TRUTH_DIR, filter_no
 
     binary = thumbnail_grey > thresh
 
-    # f, axes = plt.subplots(1, 3, figsize=(20, 10));
-    # ax = axes.ravel();
-    # ax[0].imshow(thumbnail_grey, cmap='gray');
-    # ax[0].set_title('Original');
-    # ax[1].hist(thumbnail_grey.ravel(), bins=256);
-    # ax[1].set_title('Histogram of pixel values');
-    # ax[1].axvline(thresh, color='r');
-    # ax[2].imshow(binary, cmap='gray');
-    # ax[2].set_title('Binary');
-    # plt.savefig('aa.png')
-
-    patches = pd.DataFrame(pd.DataFrame(binary))
-    # print(patches)
-
-    # print("-----stacked---")
     patches = pd.DataFrame(pd.DataFrame(binary).stack())
-
-    # print(patches)
-
-    # print(patches)
 
     patches['is_tissue'] = ~patches[0]
     patches.drop(0, axis=1, inplace=True)
-    # print(patches.iloc[:-5])
-    #
     patches['slide_path'] = slide_path
     if slide_contains_tumor:
         truth_slide_path = MASK_TRUTH_DIR / osp.basename(slide_path).replace('.tif', '_Mask.tif')
-        # print("truth_slide_path ", truth_slide_path)
         with openslide.open_slide(str(truth_slide_path)) as truth:
             thumbnail_truth = truth.get_thumbnail((truth.dimensions[0] / 256, truth.dimensions[1] / 256))
-
-        # f, axes = plt.subplots(1, 2, figsize=(20, 10));
-        # ax = axes.ravel()
-        # ax[0].imshow(thumbnail);
-        # ax[0].set_title('Slide %dx%d' % thumbnail.size)
-        # ax[1].imshow(thumbnail_truth.convert('L'), cmap='gray');
-        # ax[1].set_title('Truth %dx%d' % thumbnail_truth.size)
-        # f.suptitle('Slide & Truth Thumbnails (downsampled 256x)');
-        # plt.savefig('aa_mask.png')
-
         patches_y = pd.DataFrame(pd.DataFrame(np.array(thumbnail_truth.convert("L"))).stack())
 
         patches_y['is_tumor'] = patches_y[0] > 0
@@ -221,15 +189,6 @@ def find_classifier_patches_from_slide(slide_path, base_truth_dir=BASE_TRUTH_DIR
         with openslide.open_slide(str(truth_slide_path)) as truth:
             thumbnail_truth = truth.get_thumbnail((truth.dimensions[0] / 256, truth.dimensions[1] / 256))
 
-        # f, axes = plt.subplots(1, 2, figsize=(20, 10));
-        # ax = axes.ravel()
-        # ax[0].imshow(thumbnail);
-        # ax[0].set_title('Slide %dx%d' % thumbnail.size)
-        # ax[1].imshow(thumbnail_truth.convert('L'), cmap='gray');
-        # ax[1].set_title('Truth %dx%d' % thumbnail_truth.size)
-        # f.suptitle('Slide & Truth Thumbnails (downsampled 256x)');
-        # plt.savefig('aa_mask.png')
-
         patches_y = pd.DataFrame(pd.DataFrame(np.array(thumbnail_truth.convert("L"))).stack())
         print("patches_y Slide thumbnail", patches_y.size)
 
@@ -255,9 +214,6 @@ def gen_imgs_classifier(samples, patches_dir):
     print("gen_imgs_classifier ", num_samples)
 
     for counter, batch_sample in samples.iterrows():
-        # VIP BUG
-        slide_contains_tumor = osp.basename(batch_sample.slide_path).startswith('Tumor_') or osp.basename(
-            batch_sample.slide_path).startswith('Test_')
 
         with openslide.open_slide(batch_sample.slide_path) as slide:
             tiles = DeepZoomGenerator(slide, tile_size=256, overlap=0, limit_bounds=False)
@@ -265,25 +221,21 @@ def gen_imgs_classifier(samples, patches_dir):
             img = tiles.get_tile(tiles.level_count - 1, batch_sample.tile_loc[::-1])
 
         # only load truth mask for tumor slides
-        if slide_contains_tumor:
+        if batch_sample.is_tumor:
             truth_slide_path = MASK_TRUTH_DIR / osp.basename(batch_sample.slide_path).replace('.tif',
                                                                                               '_Mask.tif')
             with openslide.open_slide(str(truth_slide_path)) as truth:
                 truth_tiles = DeepZoomGenerator(truth, tile_size=256, overlap=0, limit_bounds=False)
                 mask = truth_tiles.get_tile(truth_tiles.level_count - 1, batch_sample.tile_loc[::-1])
-                # check center patch (128,128) if black then mark as tumor
+                # check center patch (128,128) if WHITE then mark as tumor
                 mask_n = np.array(mask)
                 mask_center = mask_n[128, 128]
 
-                if mask_center[0] == 0:
+                if mask_center[0] == 255:
                     # print("ITS A TUMOR !!!!!!")
                     cv2.imwrite(str(patches_dir) + 'mask/' + str(batch_sample.tile_loc[::-1]) + '.png',
                                 cv2.cvtColor(np.array(mask_n), cv2.COLOR_RGB2BGR))
                     cv2.imwrite(str(patches_dir) + 'tumor/' + str(batch_sample.tile_loc[::-1]) + '.png',
-                                cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR))
-                else:
-                    # normal
-                    cv2.imwrite(str(patches_dir) + 'normal/' + str(batch_sample.tile_loc[::-1]) + '.png',
                                 cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR))
 
         else:
@@ -507,7 +459,7 @@ def screw_it(samples):
 
     print("validation_test_samples ", validation_test_samples.is_tumor.value_counts())
     print("+++++++++++++++++++++++++++++++++++++++++++++++")
-
+    #
     test_samples, validation_samples = split_to_train_test(validation_test_samples, 'is_tumor', 0.5)
 
     print("+++++++++++++++++++++++++++++++++++++++++++++++")
@@ -515,9 +467,9 @@ def screw_it(samples):
     print("+++++++++++++++++++++++++++++++++++++++++++++++")
     print("Validation_samples ", validation_samples.is_tumor.value_counts())
     print("+++++++++++++++++++++++++++++++++++++++++++++++")
-    # sys.exit()
     # train patches
     exp_name = datetime.now()
+    exp_name = "REALPATCHES"
     patches_dir = str(BASE_TRUTH_DIR) + '/patches/' + str(exp_name) + '/train/'
     print('patches_dir', patches_dir)
     assure_path_exists(patches_dir)
@@ -525,7 +477,7 @@ def screw_it(samples):
     assure_path_exists(patches_dir + 'tumor/')
     assure_path_exists(patches_dir + 'mask/')
     gen_imgs_classifier(train_samples, patches_dir)
-
+    #
     # test patches
     patches_dir = str(BASE_TRUTH_DIR) + '/patches/' + str(exp_name) + '/test/'
     print('patches_dir', patches_dir)
@@ -546,6 +498,20 @@ def screw_it(samples):
 
 
 def get_more_patches():
+    # this time we wanna generrate for center 2
+    # Center 2 tumor slides 071 - 110 and normal slides 101 - 160
+
+    # global_patch_samples = pd.concat([
+    #     # load_data('Train_Normal/Normal_006.tif'),
+    #
+    #     load_data('Train_Tumor/Tumor_073.tif'),
+    #     load_data('Train_Tumor/Tumor_083.tif'),
+    #     load_data('Train_Tumor/Tumor_086.tif'),
+    #     load_data('Train_Tumor/Tumor_095.tif'),
+    #     load_data('Train_Tumor/Tumor_096.tif'),
+    #     load_data('Train_Tumor/Tumor_108.tif'),
+    #
+    # ], ignore_index=True);
     global_patch_samples = pd.concat([
         # load_data('Train_Normal/Normal_001.tif'),
         load_data('Train_Normal/Normal_006.tif'),
@@ -571,7 +537,6 @@ def get_more_patches():
         load_data('Train_Tumor/Tumor_022.tif'),
         load_data('Train_Tumor/Tumor_023.tif'),
         load_data('Train_Tumor/Tumor_024.tif'),
-
 
         load_data('Train_Tumor/Tumor_025.tif'),
         load_data('Train_Tumor/Tumor_028.tif'),
@@ -665,13 +630,3 @@ def main():
 if __name__ == "__main__":
     # print("openslide.__library_version__", openslide.__library_version__)
     main()
-    # train_it()
-    # test_it()
-
-    # Predict whole slide¶
-    # all_samples = find_patches_from_slide(test_slide_path, filter_non_tissue=False)
-    # print('Total patches inTumor_029_Mask slide: %d' % len(all_samples))
-    # print(all_samples.iloc[:5])3
-    # print(all_samples.is_tumor.value_counts())
-    # output_dir = Path('/home/tarek/Downloads/exp3-results')
-    # predict_wsi(test_slide, all_samples, model, output_dir)
