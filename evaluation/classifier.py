@@ -334,7 +334,7 @@ def plot_roc_curve(fpr, tpr, roc_auc, name=''):
     plt.figure()
     plt.plot(fpr,
              tpr,
-             label='ROC curve (area = %0.2f)' % roc_auc)
+             label='ROC curve (AUC = %0.2f)' % roc_auc)
 
     # plt.plot(fpr,
     #          fpr,
@@ -366,7 +366,7 @@ def plot_roc_curve_multiple(fpr, tpr, roc_auc, names):
     for i in range(len(names)):
         plt.plot(np.array(fpr[i]),
                  np.array(tpr[i]),
-                 label=str(names[i]) + '(area = %0.2f)' % roc_auc[i])
+                 label=str(names[i]) + ' (AUC = %0.2f)' % roc_auc[i])
     # plt.plot(fpr,
     #          fpr,
     #          label='ROC curve (area = %0.2f)' % roc_auc)
@@ -397,16 +397,26 @@ def cnn_test(methods):
 
     for method in methods:
         method_test_dir = str(exp_url) + 'mini/' + str(method)
-        test_generator = ImageDataGenerator(rescale=1. / 255).flow_from_directory(
+        test_generator = ImageDataGenerator(rescale=1. / 255,  rotation_range=20,
+            width_shift_range=0.2,
+            height_shift_range=0.2).flow_from_directory(
             method_test_dir,
             target_size=(img_width, img_height),
             batch_size=batch_size,
             shuffle=False,
-            class_mode='binary')
 
-        test_steps = np.ceil(test_generator.samples / test_generator.batch_size)
+            class_mode='binary')
+        # test_generator.samples=3000
+        no_samples=test_generator.samples
+        # no_samples =3000
+        test_steps = np.ceil(no_samples / test_generator.batch_size)
 
         true_classes = test_generator.classes
+
+        score = model.evaluate_generator(test_generator, test_steps)
+
+        print("score", score)
+
         predictions = model.predict_generator(generator=test_generator, steps=test_steps)
         auc_score = roc_auc_score(y_true=true_classes, y_score=predictions)
 
@@ -480,7 +490,14 @@ def copy_files_to_dir(directory, which_class):
              str(exp_url) + 'mini/test_center2_stained_Vahadane/' + str(which_class) + img_name)
 
 
+def dat_file():
+    print("Adas")
+    arr=np.fromfile('eval_ssim.dat')
+    print(arr.shape)
+    print(int(arr[0]))
 def main():
+
+    dat_file();
     # create_bottleneck()
     # load_bottleneck()
     # fine_tune()
@@ -493,13 +510,15 @@ def main():
     # test_data_dir = str(exp_url) + 'mini/test_center2_stained_Mackenko'
     # test_data_dir = str(exp_url) + 'mini/test_center2_stained_Reinhard'
     # test_data_dir = str(exp_url) + 'mini/test_center2_stained_Khan'
-
-    cnn_test(['test_center2_unstained', 'test_center2_stained_Mackenko', 'test_center2_stained_Reinhard',
-              'test_center2_stained_Khan',
-              'test_center2_stained_Vahadane',
-              'test_center2_stained_GAN']
-             )
-    # cnn_test(['test_center2_unstained', 'test_center2_stained_Mackenko'])
+    #
+    # cnn_test(['test_center2_unstained', 'test_center2_stained_Mackenko', 'test_center2_stained_Reinhard',
+    #           'test_center2_stained_Khan',
+    #           'test_center2_stained_Vahadane',
+    #           'test_center2_stained_GAN']
+    #          )
+    # cnn_test(['test_center2_unstained', 'test_center2_stained_Mackenko','test_center2_stained_GAN'])
+    # cnn_test([ 'test_center2_unstained'])
+    cnn_test([ 'Unnormalized','Reinhard','Mackenko','Khan','Vahadane','StainGAN'])
 
     # copy_files_to_dir('mini/test_center2_stained_Khan/', 'tumor/')
     # copy_files_to_dir('mini/test_center2_stained_Khan/', 'normal/')
