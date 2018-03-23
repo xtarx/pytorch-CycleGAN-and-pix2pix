@@ -620,11 +620,15 @@ def test_it():
     print("Precision: %.2f" % precision)
     print("F1 Score: %.2f" % f1_score)
 
+def babak():
+    load_data('Train_Tumor/Tumor_073.tif');
+
 
 def main():
     # train_it()
     # screw_it()
-    get_more_patches()
+    # get_more_patches()
+    babak()
 
 
 if __name__ == "__main__":
