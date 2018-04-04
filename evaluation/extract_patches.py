@@ -25,7 +25,8 @@ from datetime import datetime
 # %config InlineBackend.figure_format = 'retina'
 BASE_TRUTH_DIR = Path('/home/tarek/Downloads/')
 MASK_TRUTH_DIR = Path('/home/tarek/Downloads/Mask/')
-META_NAME = 'exp12_patches/'
+META_NAME = 'exp13_patches_slide_83/'
+exp_folder_name = 'Tumor_083_Babak_Normalized_250_370'
 BATCH_SIZE = 32
 N_EPOCHS = 30
 NUM_SAMPLES = 36000
@@ -106,12 +107,24 @@ def find_patches_from_slide(slide_path, base_truth_dir=BASE_TRUTH_DIR, filter_no
     # slide_contains_tumor = True
 
     with openslide.open_slide(slide_path) as slide:
-        thumbnail = slide.get_thumbnail((slide.dimensions[0] / 256, slide.dimensions[1] / 256))
+        print("Original Slide thumbnail %dx%d" % slide.dimensions)
+        print(slide.level_downsamples)
+        thumbnail = slide.read_region((250, 370), 0, (1000 , 1000))
+        # print("Original Slide read_region %dx%d" % slide_resized.size)
+
+        # thumbnail = slide.get_thumbnail((slide.dimensions[0] / 256, slide.dimensions[1] / 256))
+        # thumbnail = slide.get_thumbnail((200,200))
         # print("Original Slide thumbnail %dx%d" % thumbnail.size)
 
+
     thumbnail_grey = np.array(thumbnail.convert('L'))  # convert to grayscale
+    plt.imshow(thumbnail_grey, cmap='gray');
+    # plt.imshow(thumbnail_grey);
+    plt.savefig(str(osp.basename(slide_path)) + '.png')
 
     thresh = threshold_otsu(thumbnail_grey)
+    print("thresh is ",thresh)
+    # sys.exit();
 
     binary = thumbnail_grey > thresh
 
@@ -316,7 +329,7 @@ def gen_imgs(samples, batch_size, patches_dir, base_truth_dir=BASE_TRUTH_DIR, sh
 
 
 def assure_path_exists(path):
-    print("selected path", path)
+    # print("selected path", path)
     dir = os.path.dirname(path)
     if not os.path.exists(dir):
         # print("making dir")
@@ -448,35 +461,40 @@ def split_to_train_test(df, label_column, train_frac=0.8):
 
 def screw_it(samples):
     # split samples into train and validation set
-    split = StratifiedShuffleSplit(n_splits=1, test_size=0.4, random_state=42)
-    for train_index, test_index in split.split(samples, samples["is_tumor"]):
-        train_samples = samples.loc[train_index]
-        validation_test_samples = samples.loc[test_index]
-
-    print("+++++++++++++++++++++++++++++++++++++++++++++++")
-    print("Train_samples ", train_samples.is_tumor.value_counts())
-    print("+++++++++++++++++++++++++++++++++++++++++++++++")
-
-    print("validation_test_samples ", validation_test_samples.is_tumor.value_counts())
-    print("+++++++++++++++++++++++++++++++++++++++++++++++")
+    # split = StratifiedShuffleSplit(n_splits=1, test_size=0.4, random_state=42)
+    # for train_index, test_index in split.split(samples, samples["is_tumor"]):
+    #     train_samples = samples.loc[train_index]
+    #     validation_test_samples = samples.loc[test_index]
     #
-    test_samples, validation_samples = split_to_train_test(validation_test_samples, 'is_tumor', 0.5)
+    # print("+++++++++++++++++++++++++++++++++++++++++++++++")
+    # print("Train_samples ", train_samples.is_tumor.value_counts())
+    # print("+++++++++++++++++++++++++++++++++++++++++++++++")
+    #
+    # print("validation_test_samples ", validation_test_samples.is_tumor.value_counts())
+    # print("+++++++++++++++++++++++++++++++++++++++++++++++")
+    # #
+    # test_samples, validation_samples = split_to_train_test(validation_test_samples, 'is_tumor', 0.5)
+    #
+    # print("+++++++++++++++++++++++++++++++++++++++++++++++")
+    # print("Test_samples ", test_samples.is_tumor.value_counts())
+    # print("+++++++++++++++++++++++++++++++++++++++++++++++")
+    # print("Validation_samples ", validation_samples.is_tumor.value_counts())
+    # print("+++++++++++++++++++++++++++++++++++++++++++++++")
 
-    print("+++++++++++++++++++++++++++++++++++++++++++++++")
-    print("Test_samples ", test_samples.is_tumor.value_counts())
-    print("+++++++++++++++++++++++++++++++++++++++++++++++")
-    print("Validation_samples ", validation_samples.is_tumor.value_counts())
-    print("+++++++++++++++++++++++++++++++++++++++++++++++")
     # train patches
     exp_name = datetime.now()
     exp_name = "REALPATCHES"
-    patches_dir = str(BASE_TRUTH_DIR) + '/patches/' + str(exp_name) + '/center_22/'
+    patches_dir = str(BASE_TRUTH_DIR) + '/patches/' + str(exp_name) + '/'+str(exp_folder_name)+'/'
     print('patches_dir', patches_dir)
+    print('patches_dir', exp_folder_name)
     assure_path_exists(patches_dir)
     assure_path_exists(patches_dir + 'normal/')
     assure_path_exists(patches_dir + 'tumor/')
     assure_path_exists(patches_dir + 'mask/')
-    gen_imgs_classifier(validation_test_samples, patches_dir)
+
+
+    # gen_imgs_classifier(validation_test_samples, patches_dir)
+    gen_imgs_classifier(samples, patches_dir)
     #
     # # test patches
     # patches_dir = str(BASE_TRUTH_DIR) + '/patches/' + str(exp_name) + '/test/'
@@ -502,73 +520,15 @@ def get_more_patches():
     # Center 2 tumor slides 071 - 110 and normal slides 101 - 160
 
     global_patch_samples = pd.concat([
-        # load_data('Train_Normal/Normal_006.tif'),
 
-        load_data('Train_Tumor/Tumor_073.tif'),
-        load_data('Train_Tumor/Tumor_083.tif'),
-        load_data('Train_Tumor/Tumor_086.tif'),
-        load_data('Train_Tumor/Tumor_095.tif'),
-        load_data('Train_Tumor/Tumor_096.tif'),
-        load_data('Train_Tumor/Tumor_108.tif'),
+        load_data('Train_Tumor/Tumor_083_Babak_Normalized.tif'),
+        # load_data('Train_Tumor/Tumor_083.tif'),
 
     ], ignore_index=True);
-    # global_patch_samples = pd.concat([
-    #     # load_data('Train_Normal/Normal_001.tif'),
-    #     load_data('Train_Normal/Normal_006.tif'),
-    #     # load_data('Train_Normal/Normal_011.tif'),
-    #     # # load_data('Train_Normal/Normal_016.tif'),
-    #     load_data('Train_Normal/Normal_034.tif'),
-    #
-    #     load_data('Train_Tumor/Tumor_001.tif'),
-    #
-    #     load_data('Train_Tumor/Tumor_002.tif'),
-    #     load_data('Train_Tumor/Tumor_007.tif'),
-    #     load_data('Train_Tumor/Tumor_008.tif'),
-    #
-    #     # load_data('Train_Tumor/Tumor_006.tif'),
-    #     load_data('Train_Tumor/Tumor_009.tif'),
-    #     load_data('Train_Tumor/Tumor_010.tif'),
-    #     load_data('Train_Tumor/Tumor_012.tif'),
-    #     load_data('Train_Tumor/Tumor_016.tif'),
-    #     load_data('Train_Tumor/Tumor_018.tif'),
-    #     load_data('Train_Tumor/Tumor_019.tif'),
-    #     load_data('Train_Tumor/Tumor_020.tif'),
-    #     load_data('Train_Tumor/Tumor_021.tif'),
-    #     load_data('Train_Tumor/Tumor_022.tif'),
-    #     load_data('Train_Tumor/Tumor_023.tif'),
-    #     load_data('Train_Tumor/Tumor_024.tif'),
-    #
-    #     load_data('Train_Tumor/Tumor_025.tif'),
-    #     load_data('Train_Tumor/Tumor_028.tif'),
-    #     load_data('Train_Tumor/Tumor_029.tif'),
-    #     load_data('Train_Tumor/Tumor_030.tif'),
-    #     load_data('Train_Tumor/Tumor_031.tif'),
-    #     load_data('Train_Tumor/Tumor_032.tif'),
-    #     load_data('Train_Tumor/Tumor_033.tif'),
-    #     load_data('Train_Tumor/Tumor_035.tif'),
-    #     load_data('Train_Tumor/Tumor_036.tif'),
-    #     load_data('Train_Tumor/Tumor_037.tif'),
-    #     load_data('Train_Tumor/Tumor_038.tif'),
-    #
-    #     load_data('Train_Tumor/Tumor_050.tif'),
-    #     load_data('Train_Tumor/Tumor_057.tif'),
-    #     load_data('Train_Tumor/Tumor_059.tif'),
-    #     load_data('Train_Tumor/Tumor_060.tif'),
-    #     load_data('Train_Tumor/Tumor_070.tif'),
-    #     # load_data('Train_Tumor/Tumor_073.tif'),
-    #     # load_data('Train_Tumor/Tumor_083.tif'),
-    #     # load_data('Train_Tumor/Tumor_086.tif'),
-    #     # load_data('Train_Tumor/Tumor_095.tif'),
-    #     # load_data('Train_Tumor/Tumor_096.tif'),
-    #     # load_data('Train_Tumor/Tumor_108.tif'),
-    #     # load_data('Train_Tumor/Tumor_035.tif'),
-    #
-    # ], ignore_index=True);
 
-    # print(global_patch_samples.columns)
     print('Total patches in global_patch_samples: %d' % len(global_patch_samples))
     print(global_patch_samples.is_tumor.value_counts())
-    global_patch_samples = global_patch_samples.sample(frac=1)
+    # global_patch_samples = global_patch_samples.sample(frac=1)
 
     enhanced_patches = global_patch_samples.copy()
     # delete false patches from original samples
@@ -577,12 +537,12 @@ def get_more_patches():
 
     print("----------")
     enhanced_patches = enhanced_patches[enhanced_patches['is_tumor'] == False]
-    enhanced_patches = enhanced_patches.sample(frac=1)
-    # 451947-40k
-    enhanced_patches = enhanced_patches[:-165954]
-    global_patch_samples = global_patch_samples.append(enhanced_patches, ignore_index=True)
-    global_patch_samples = global_patch_samples.sample(frac=1)
-    print(global_patch_samples.is_tumor.value_counts())
+    # enhanced_patches = enhanced_patches.sample(frac=1)
+    # # 451947-40k
+    # enhanced_patches = enhanced_patches[:-65839]
+    # global_patch_samples = global_patch_samples.append(enhanced_patches, ignore_index=True)
+    # global_patch_samples = global_patch_samples.sample(frac=1)
+    # print(global_patch_samples.is_tumor.value_counts())
     print("----------")
     screw_it(global_patch_samples)
 
@@ -620,16 +580,11 @@ def test_it():
     print("Precision: %.2f" % precision)
     print("F1 Score: %.2f" % f1_score)
 
-def babak():
-    load_data('Train_Tumor/Tumor_073.tif');
-
 
 def main():
     # train_it()
     # screw_it()
     # get_more_patches()
-    babak()
-
 
 if __name__ == "__main__":
     # print("openslide.__library_version__", openslide.__library_version__)

@@ -17,7 +17,9 @@ validation_samples = 10144
 test_samples = 10816
 # test_samples = 6240
 batch_size = 32
-exp_url = '/home/tarek/Downloads/patches/REALPATCHES/'
+# exp_url = '/home/tarek/Downloads/patches/REALPATCHES/'
+#/home/tarek/Downloads/patches/REALPATCHES/Babak_Exp/dataset
+exp_url = '/home/tarek/Downloads/patches/REALPATCHES/Babak_Exp/dataset/'
 train_data_dir = str(exp_url) + 'train'
 validation_data_dir = str(exp_url) + 'validation'
 # test slides from center2---unstained
@@ -355,7 +357,7 @@ def plot_roc_curve(fpr, tpr, roc_auc, name=''):
                 bbox_inches='tight')
 
 
-def plot_roc_curve_multiple(fpr, tpr, roc_auc, names):
+def plot_roc_curve_multiple(fpr, tpr, roc_auc, names,exp_url):
     import matplotlib.pyplot as plt
 
     print("Producing Chart - ROC Curve - {}".format('all in one'))
@@ -387,7 +389,8 @@ def plot_roc_curve_multiple(fpr, tpr, roc_auc, names):
 
 
 def cnn_test(methods):
-    model = load_model(str(exp_url) + 'models/basic_cnn_30_epochs_full_model.h5')
+    # model = load_model(str(exp_url) + 'models/basic_cnn_30_epochs_full_model.h5')
+    model = load_model('/home/tarek/Downloads/patches/REALPATCHES/models/basic_cnn_30_epochs_full_model.h5')
 
     fpr_arr = []
     tpr_arr = []
@@ -396,10 +399,11 @@ def cnn_test(methods):
     from sklearn.metrics import roc_auc_score, roc_curve, auc
 
     for method in methods:
-        method_test_dir = str(exp_url) + 'mini/' + str(method)
-        test_generator = ImageDataGenerator(rescale=1. / 255,  rotation_range=20,
-            width_shift_range=0.2,
-            height_shift_range=0.2).flow_from_directory(
+        # method_test_dir = str(exp_url) + 'mini/' + str(method)
+        method_test_dir = str(exp_url) + '/' + str(method)
+        test_generator = ImageDataGenerator(rescale=1. / 255, rotation_range=20,
+                                            width_shift_range=0.2,
+                                            height_shift_range=0.2).flow_from_directory(
             method_test_dir,
             target_size=(img_width, img_height),
             batch_size=batch_size,
@@ -407,7 +411,7 @@ def cnn_test(methods):
 
             class_mode='binary')
         # test_generator.samples=3000
-        no_samples=test_generator.samples
+        no_samples = test_generator.samples
         # no_samples =3000
         test_steps = np.ceil(no_samples / test_generator.batch_size)
 
@@ -438,7 +442,7 @@ def cnn_test(methods):
         roc_arr.append(roc_auc)
         names_arr.append(method_name_beautify)
 
-    plot_roc_curve_multiple(fpr_arr, tpr_arr, roc_arr, names_arr)
+    plot_roc_curve_multiple(fpr_arr, tpr_arr, roc_arr, names_arr,'/home/tarek/Downloads/patches/REALPATCHES/')
 
 
 def assure_path_exists(path):
@@ -492,11 +496,12 @@ def copy_files_to_dir(directory, which_class):
 
 def dat_file():
     print("Adas")
-    arr=np.fromfile('eval_ssim.dat')
+    arr = np.fromfile('eval_ssim.dat')
     print(arr.shape)
     print(int(arr[0]))
-def main():
 
+
+def main():
     dat_file();
     # create_bottleneck()
     # load_bottleneck()
@@ -518,8 +523,8 @@ def main():
     #          )
     # cnn_test(['test_center2_unstained', 'test_center2_stained_Mackenko','test_center2_stained_GAN'])
     # cnn_test([ 'test_center2_unstained'])
-    cnn_test([ 'Unnormalized','Reinhard','Mackenko','Khan','Vahadane','StainGAN'])
-
+    # cnn_test(['Unnormalized', 'Reinhard', 'Mackenko', 'Khan', 'Vahadane', 'StainGAN'])
+    cnn_test(['unstained', 'babak','staingan'])
     # copy_files_to_dir('mini/test_center2_stained_Khan/', 'tumor/')
     # copy_files_to_dir('mini/test_center2_stained_Khan/', 'normal/')
 
